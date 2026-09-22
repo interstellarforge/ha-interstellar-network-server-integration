@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 OWNER="${1:-}"
-REPO="${2:-home-assistant-interstellar-network}"
+REPO="${2:-ha-interstellar-network-server-integration}"
 
 if [[ -z "$OWNER" ]]; then
   echo "Usage: $0 <github-user-or-org> [repository-name]"

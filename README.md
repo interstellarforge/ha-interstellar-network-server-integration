@@ -45,10 +45,10 @@ Until this repository is submitted to the default HACS store, add it as a custom
 1. Open **HACS**
 2. Open **Integrations**
 3. Open the menu → **Custom repositories**
-4. Add this GitHub repository URL
+4. Add `https://github.com/interstellarforge/ha-interstellar-network-server-integration`
 5. Category: **Integration**
 6. Search for **Interstellar Network**
-7. Download the latest release
+7. Download the latest release, or the default branch until a release is published
 8. Restart Home Assistant
 9. Go to **Settings → Devices & services → Add integration**
 10. Search for **Interstellar Network**
@@ -79,10 +79,34 @@ On every Interstellar Network node:
 2. Open **Health API agent**
 3. Install/upgrade the health agent
 4. Configure roles and expected services
-5. Enable Tailscale Serve
+5. Enable Tailscale Serve for the local agent:
+
+   ```bash
+   sudo tailscale serve --bg http://127.0.0.1:9127
+   tailscale serve status
+   ```
+
+   Use the full Tailscale DNS name shown by `tailscale status --json` as the
+   Home Assistant URL, for example `https://node.example.ts.net`.
+
 6. Enable Home Assistant auto-discovery if Home Assistant can see the server over mDNS
 
 The health agent remains localhost-only and read-only.
+
+### Checking the health endpoint
+
+Run `curl -sS -i http://127.0.0.1:9127/health` on the node. Do not use
+`curl -f` here: the agent returns JSON with HTTP 503 when a health check is
+degraded, and `-f` hides the response body. If the response contains
+`"expected_services_healthy": false`, inspect the service policy details:
+
+```bash
+curl -sS http://127.0.0.1:9127/stats | python3 -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get("service_policy", {}), indent=2))'
+```
+
+Start the failed expected service or update the expected-service list through
+**Interstellar → Health API agent**. Check `tailscale serve status` if the local
+URL works but the advertised HTTPS URL cannot be reached.
 
 ## Dashboard card
 

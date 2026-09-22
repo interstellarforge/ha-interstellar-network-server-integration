@@ -2,13 +2,9 @@
 
 ## One-time setup
 
-1. Create a public GitHub repository named `home-assistant-interstellar-network`.
-2. Run:
-   ```bash
-   ./scripts/configure-repository.sh YOUR_GITHUB_USERNAME
-   ```
-3. Commit and push the repository.
-4. Create a GitHub release for `v0.3.0`.
+1. Set the GitHub repository description and topics.
+2. Commit and push the integration.
+3. Create a GitHub release for `v0.3.0` after validation passes.
 
 ## Add as a custom HACS repository
 
@@ -16,7 +12,7 @@ In Home Assistant:
 
 1. HACS → Integrations
 2. Menu → Custom repositories
-3. Repository: `https://github.com/YOUR_GITHUB_USERNAME/home-assistant-interstellar-network`
+3. Repository: `https://github.com/interstellarforge/ha-interstellar-network-server-integration`
 4. Category: Integration
 5. Download Interstellar Network
 6. Restart Home Assistant

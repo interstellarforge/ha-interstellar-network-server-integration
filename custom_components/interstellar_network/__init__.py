@@ -5,11 +5,14 @@ from pathlib import Path
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import InterstellarApiClient
-from .const import CARD_URL, CONF_URL, CONF_VERIFY_SSL, PLATFORMS, REQUEST_TIMEOUT_SECONDS
+from .const import CARD_URL, CONF_URL, CONF_VERIFY_SSL, DOMAIN, PLATFORMS, REQUEST_TIMEOUT_SECONDS
 from .coordinator import InterstellarCoordinator
 from .repairs import async_delete_repairs, async_update_repairs
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 @dataclass
 class InterstellarRuntimeData:
