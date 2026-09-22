@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InterstellarNetwork card visual fixture</title>
+  <style>
+    :root { --primary-text-color:#e8eef7; --secondary-text-color:#9eabc0; --card-background-color:#18212f; --secondary-background-color:#222e3f; --divider-color:#34445a; --primary-color:#6aa9ff; --success-color:#66bb6a; --warning-color:#ffb74d; --error-color:#ef5350; }
+    body { margin:0; padding:24px; background:#0f1621; color:var(--primary-text-color); font-family:system-ui,sans-serif; }
+    interstellar-network-card { margin-bottom:24px; }
+  </style>
+  <script src="../custom_components/interstellar_network/frontend/interstellar-network-card.js"></script>
+</head>
+<body>
+  <interstellar-network-card id="card"></interstellar-network-card>
+  <script>
+    const makeSnapshot = (id, name, role, cpu, memory, disk, services, containers = []) => ({
+      state: "online",
+      attributes: { interstellar_network_id:id, interstellar_key:"server_snapshot", interstellar_hostname:name, snapshot:{
+        host:{machine_id:id,hostname:name,roles:role,uptime_seconds:id==="atlas-id"?104400:1576800,boot_time_utc:"2026-09-21T14:27:23Z",os:"Debian GNU/Linux 13 (trixie)",kernel:"6.12.107+deb13-amd64",architecture:"x86_64",virtualization:"kvm"},
+        timestamp_utc:new Date().toISOString(),agent_version:"3.2.0",cpu:{used_percent:cpu,count:4,model:"Intel Core i5"},memory:{used_percent:memory,total_bytes:16000000000,used_bytes:8000000000},disk_root:{used_percent:disk,inode_used_percent:8,total_bytes:1000000000000,used_bytes:disk*10000000000},
+        updates:{pending:id==="atlas-id"?3:7,pending_security:id==="atlas-id"?0:2,packages:[]},system:{reboot_required:false,failed_systemd_units:0,failed_units:[],oom_kills_since_boot:0},service_policy:{expected_services:Object.keys(services),problems:[]},services,
+        network:{addresses:[{kind:"lan",address:"192.168.1.10"}],tailscale:{version:"1.98.9",connected:true,magicdns_name:name.toLowerCase()+".tail"}},wake_on_lan:{configured:true},
+        control:{available:true,version:"0.2.0",toolbox_version:"4.5.0",tailscale_version:"1.98.9",last_reboot_action:{timestamp:"2026-09-20T10:00:00Z",status:"successful"},last_reboot_duration_seconds:75,policy:{expected_containers:containers.map(c=>c.name),manageable_services:["docker"],manageable_containers:containers.map(c=>c.name),sensitive_services_opt_in:[]},docker:{installed:true,daemon_running:true,version:"28.0",running:containers.length,stopped:0,containers},actions:[]}
+      }}
+    });
+    const card=document.querySelector("#card");
+    card.setConfig({title:"InterstellarNetwork",mode:new URLSearchParams(location.search).get("mode")||"compact",full_width:true,default_expanded:{system:true,manage:true}});
+    card.hass={states:{
+      "sensor.atlas_snapshot":makeSnapshot("atlas-id","Atlas",["Development"],11,27,18,{ssh:"active",tailscaled:"active",docker:"inactive"}),
+      "sensor.jupiter_snapshot":makeSnapshot("jupiter-id","Jupiter",["Media","Docker host"],18,61,72,{ssh:"active",tailscaled:"active",docker:"active",sonarr:"inactive",radarr:"active",bazarr:"active",overseerr:"active"},[{name:"plex",state:"running",health:"healthy",project:"media"}])
+    },callService:async()=>{}};
+  </script>
+</body>
+</html>

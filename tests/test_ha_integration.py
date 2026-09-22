@@ -45,7 +45,7 @@ class FakeCoordinator:
 class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_card_resource_uses_release_cache_key(self):
         self.assertEqual("/interstellar_network/interstellar-network-card.js", CARD_PATH)
-        self.assertEqual(f"{CARD_PATH}?v=0.4.1", CARD_URL)
+        self.assertEqual(f"{CARD_PATH}?v=0.5.0", CARD_URL)
 
     async def test_migration_keeps_unique_id(self):
         self.assertEqual("machine-a",machine_id(stats()))
@@ -103,6 +103,28 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         health.async_get_stats.side_effect=InterstellarCannotConnect("offline")
         with self.assertRaises(UpdateFailed):
             await coordinator._async_update_data()
+
+    async def test_control_metadata_is_preserved_for_card_and_offline_state(self):
+        data=stats();data.update({"services":{"ssh":"active"},"filesystems":[{"mountpoint":"/srv"}],
+            "disk_io":[{"device":"sda"}],"temperatures":[{"name":"CPU","celsius":42}],"time":{"synchronized":True}})
+        control_state={"control_available":True,"version":"0.2.0","toolbox_version":"4.5.0",
+            "tailscale_version":"1.98.9","tailscale_daemon_version":"1.98.9-t123456",
+            "boot_time_utc":"2026-09-21T14:27:23+00:00",
+            "last_reboot_action":{"status":"successful","timestamp":"2026-09-21T14:27:00+00:00"},
+            "last_reboot_duration_seconds":75,"policy":{"manageable_services":["docker"]},
+            "docker":{"installed":True},"actions":[]}
+        health=SimpleNamespace(async_get_stats=AsyncMock(return_value=data))
+        control=SimpleNamespace(async_get_control=AsyncMock(return_value=control_state))
+        coordinator=InterstellarCoordinator(MagicMock(),health,control)
+        await coordinator._async_update_data()
+        self.assertEqual("1.98.9",coordinator.last_known["_control"]["tailscale_version"])
+        self.assertEqual([{"mountpoint":"/srv"}],coordinator.last_known["filesystems"])
+        self.assertEqual({"ssh":"active"},coordinator.last_known["services"])
+        snapshot=ServerSnapshotSensor(coordinator).extra_state_attributes["snapshot"]
+        self.assertEqual("4.5.0",snapshot["control"]["toolbox_version"])
+        self.assertEqual("0.2.0",snapshot["control"]["version"])
+        self.assertEqual("1.98.9",snapshot["control"]["tailscale_version"])
+        self.assertEqual(75,snapshot["control"]["last_reboot_duration_seconds"])
 
     async def test_wol_last_known_saved_before_health_outage(self):
         data=stats();data["wake_on_lan"]={"supported":True,"enabled":True,

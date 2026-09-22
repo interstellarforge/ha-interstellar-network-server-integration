@@ -29,12 +29,15 @@ class InterstellarCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     data["_control"] = {"available": False, "control_unavailable_reason": reason or "Control API unavailable"}
             summary = {key: data.get(key) for key in (
                 "status", "agent_version", "timestamp_utc", "host", "cpu", "memory",
-                "disk_root", "network", "updates", "system", "service_policy",
+                "disk_root", "filesystems", "disk_io", "network", "temperatures",
+                "services", "updates", "system", "time", "service_policy",
                 "wake_on_lan", "control_plane")}
             control = data.get("_control") or {}
             summary["_control"] = {key: control.get(key) for key in (
                 "available", "control_available", "control_unavailable_reason", "version",
-                "toolbox_version", "last_reboot_action", "last_reboot_duration_seconds")}
+                "toolbox_version", "tailscale_version", "tailscale_daemon_version",
+                "boot_time_utc", "last_reboot_action", "last_reboot_duration_seconds",
+                "policy", "docker")}
             summary["_control"]["actions"] = control.get("actions", [])[:5]
             self.last_known = summary
             if self.store and (self._last_save == 0 or self._last_saved_wol != summary["wake_on_lan"]

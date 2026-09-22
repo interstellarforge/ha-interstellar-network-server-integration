@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- Add responsive `compact`, `detailed`, and hybrid `fleet` card layouts with all-server discovery and predictable machine-ID/case-insensitive hostname filtering.
+- Preserve independent per-server section expansion, selected server, interactive layout mode, pending confirmations, and Wake progress across Home Assistant state refreshes.
+- Normalize card data by canonical machine ID, retain unavailable servers with last-known values, and warn about unmatched configured servers.
+- Add capability-driven Manage controls, read-only explanations, update/power confirmations, and WoL-aware shutdown warnings while keeping all actions behind Home Assistant admin services.
+- Surface Toolbox, Control, Tailscale, reboot, and last-known telemetry consistently from the existing health and Control APIs.
+- Add Home Assistant Sections sizing through `getGridOptions()`, including default full-width behavior and `full_width: false` support.
+- Add regression coverage for state persistence, multiple servers, metadata, management, layouts, unavailable servers, filtering, and grid sizing.
+
 ## 0.4.1
 
 - Fix frontend upgrades retaining the pre-0.4 card module by documenting a versioned Lovelace resource URL.
