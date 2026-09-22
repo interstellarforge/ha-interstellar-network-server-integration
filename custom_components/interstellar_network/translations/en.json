@@ -1,0 +1,124 @@
+{
+  "title": "Interstellar Network",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect an Interstellar Network node",
+        "description": "Enter the Tailscale Serve HTTPS URL for the read-only health agent.",
+        "data": {
+          "url": "Health API URL",
+          "verify_ssl": "Verify SSL certificate"
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Discovered {name}",
+        "description": "Add {name} at {url}?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Interstellar health agent",
+      "invalid_response": "The server returned an invalid Interstellar health response"
+    },
+    "abort": {
+      "already_configured": "This server is already configured",
+      "cannot_connect": "The discovered server could not be reached",
+      "missing_url": "Discovery did not include an API URL",
+      "missing_unique_id": "Discovery did not include a machine ID"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "server_roles": {
+        "name": "Server roles"
+      },
+      "cpu_usage": {
+        "name": "CPU usage"
+      },
+      "cpu_iowait": {
+        "name": "CPU I/O wait"
+      },
+      "cpu_steal": {
+        "name": "CPU steal"
+      },
+      "load_1m": {
+        "name": "Load 1 minute"
+      },
+      "memory_usage": {
+        "name": "Memory usage"
+      },
+      "swap_usage": {
+        "name": "Swap usage"
+      },
+      "root_disk_usage": {
+        "name": "Root disk usage"
+      },
+      "root_inode_usage": {
+        "name": "Root inode usage"
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "boot_time": {
+        "name": "Boot time"
+      },
+      "pending_updates": {
+        "name": "Pending updates"
+      },
+      "pending_security_updates": {
+        "name": "Pending security updates"
+      },
+      "last_successful_update": {
+        "name": "Last successful update"
+      },
+      "failed_systemd_units": {
+        "name": "Failed systemd units"
+      },
+      "oom_kills": {
+        "name": "OOM kills since boot"
+      },
+      "listening_tcp_ports": {
+        "name": "Listening TCP ports"
+      },
+      "lan_ipv4": {
+        "name": "LAN IPv4"
+      },
+      "tailscale_ipv4": {
+        "name": "Tailscale IPv4"
+      }
+    }
+  },
+  "issues": {
+    "disk_full": {
+      "title": "Disk space low on {server}",
+      "description": "Root disk usage on {server} is {percent}%, above the {threshold}% warning threshold. Free disk space on the server."
+    },
+    "inodes_full": {
+      "title": "Inodes low on {server}",
+      "description": "Root inode usage on {server} is {percent}%, above the {threshold}% warning threshold. Remove files or investigate inode exhaustion."
+    },
+    "failed_units": {
+      "title": "Failed systemd units on {server}",
+      "description": "{server} reports {count} failed systemd unit(s). Inspect and repair the failed units."
+    },
+    "ntp_unsynchronized": {
+      "title": "Time is not synchronized on {server}",
+      "description": "NTP reports unsynchronized time on {server}. Check the time synchronization service and network access."
+    },
+    "reboot_required": {
+      "title": "Reboot required on {server}",
+      "description": "{server} reports that a reboot is required to complete installed updates."
+    },
+    "security_updates": {
+      "title": "Security updates pending on {server}",
+      "description": "{server} has {count} pending security update(s). Apply updates when appropriate."
+    },
+    "oom_kills": {
+      "title": "OOM kills detected on {server}",
+      "description": "{server} has recorded {count} out-of-memory kill(s) since boot. Investigate memory pressure."
+    },
+    "expected_service_down": {
+      "title": "Expected service down on {server}",
+      "description": "Expected service {service} on {server} is {state}. Restore the service or remove it from the expected-service policy."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Interstellar Network",
+  "render_readme": true,
+  "homeassistant": "2026.8.0",
+  "hide_default_branch": true
+}

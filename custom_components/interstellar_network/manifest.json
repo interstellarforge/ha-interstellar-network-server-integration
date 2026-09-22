@@ -1,0 +1,20 @@
+{
+  "domain": "interstellar_network",
+  "name": "Interstellar Network",
+  "version": "0.3.0",
+  "config_flow": true,
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "zeroconf": [
+    "_interstellar._tcp.local."
+  ],
+  "dependencies": [
+    "zeroconf"
+  ],
+  "requirements": [],
+  "codeowners": [
+    "@__GITHUB_OWNER__"
+  ],
+  "documentation": "https://github.com/__GITHUB_OWNER__/home-assistant-interstellar-network#readme",
+  "issue_tracker": "https://github.com/__GITHUB_OWNER__/home-assistant-interstellar-network/issues"
+}
