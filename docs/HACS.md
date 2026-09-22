@@ -4,7 +4,7 @@
 
 1. Set the GitHub repository description and topics.
 2. Commit and push the integration.
-3. Create a GitHub release for `v0.4.0` after validation passes.
+3. Create a GitHub release for `v0.4.1` after validation passes.
 
 ## Add as a custom HACS repository
 
@@ -22,9 +22,9 @@ After that, new GitHub releases appear as HACS updates.
 ## Publishing a new version
 
 ```bash
-./scripts/release.sh 0.4.0
+./scripts/release.sh 0.4.1
 git push origin main
-git push origin v0.4.0
+git push origin v0.4.1
 ```
 
 Create the matching GitHub Release. The release workflow attaches a manual-install ZIP automatically.

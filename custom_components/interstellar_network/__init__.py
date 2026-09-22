@@ -15,7 +15,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.storage import Store
 
 from .api import InterstellarApiClient, InterstellarApiError
-from .const import CARD_URL, CONF_CONTROL_URL, CONF_URL, CONF_VERIFY_SSL, DOMAIN, PLATFORMS, REQUEST_TIMEOUT_SECONDS
+from .const import CARD_PATH, CONF_CONTROL_URL, CONF_URL, CONF_VERIFY_SSL, DOMAIN, PLATFORMS, REQUEST_TIMEOUT_SECONDS
 from .coordinator import InterstellarCoordinator
 from .repairs import async_delete_repairs, async_update_repairs
 from .wol import async_send_magic_packet, effective_wol
@@ -57,7 +57,7 @@ type InterstellarConfigEntry = ConfigEntry[InterstellarRuntimeData]
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     card = Path(__file__).parent / "frontend" / "interstellar-network-card.js"
-    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(card), False)])
+    await hass.http.async_register_static_paths([StaticPathConfig(CARD_PATH, str(card), False)])
     hass.data.setdefault(DOMAIN, {})
 
     async def require_admin(call: ServiceCall) -> None:

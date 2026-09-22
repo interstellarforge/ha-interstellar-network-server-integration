@@ -1,3 +1,4 @@
+const INTERSTELLAR_CARD_VERSION = "0.4.1";
 const ESC = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 const NUM = (v) => v===null||v===undefined||v===""?null:Number.isFinite(Number(v))?Number(v):null;
 const BYTES = (v) => { const n=NUM(v); if(n===null) return "—"; let x=n,u=0; while(Math.abs(x)>=1024&&u<4){x/=1024;u++;} return `${x.toFixed(u?1:0)} ${["B","KiB","MiB","GiB","TiB"][u]}`; };
@@ -123,7 +124,9 @@ class InterstellarOverviewCard extends HTMLElement {
     if(power)input.focus();
   }
 }
-customElements.define("interstellar-overview-card",InterstellarOverviewCard);
-customElements.define("interstellar-network-card",class extends InterstellarOverviewCard{});
+if(!customElements.get("interstellar-overview-card"))customElements.define("interstellar-overview-card",InterstellarOverviewCard);
+if(!customElements.get("interstellar-network-card"))customElements.define("interstellar-network-card",class extends InterstellarOverviewCard{});
 window.customCards=window.customCards||[];
-window.customCards.push({type:"interstellar-overview-card",name:"Interstellar Server Fleet",description:"Monitor and manage Interstellar servers"});
+if(!window.customCards.some(card=>card.type==="interstellar-overview-card"))window.customCards.push({type:"interstellar-overview-card",name:"Interstellar Server Fleet",description:`Monitor and manage Interstellar servers (v${INTERSTELLAR_CARD_VERSION})`});
+window.interstellarNetworkCardVersion=INTERSTELLAR_CARD_VERSION;
+console.info(`Interstellar Server Fleet card v${INTERSTELLAR_CARD_VERSION}`);

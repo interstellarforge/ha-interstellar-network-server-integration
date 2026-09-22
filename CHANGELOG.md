@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Fix frontend upgrades retaining the pre-0.4 card module by documenting a versioned Lovelace resource URL.
+- Register `custom:interstellar-overview-card` and the legacy `custom:interstellar-network-card` alias defensively when an older bundle is already present.
+- Expose the loaded card version in the browser console for upgrade diagnosis.
+
 ## 0.4.0
 
 - Add admin-only, Home Assistant-originated Wake-on-LAN with learned and configurable MAC/broadcast metadata that remains available while the server is offline.

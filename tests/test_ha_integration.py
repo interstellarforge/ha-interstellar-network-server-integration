@@ -15,7 +15,7 @@ try:
     from custom_components.interstellar_network.coordinator import InterstellarCoordinator
     from custom_components.interstellar_network.sensor import ServerSnapshotSensor, StandardSensor, D
     from custom_components.interstellar_network.wol import async_send_magic_packet, effective_wol, normalize_mac, validate_broadcast
-    from custom_components.interstellar_network.const import PLATFORMS
+    from custom_components.interstellar_network.const import CARD_PATH, CARD_URL, PLATFORMS
     from custom_components.interstellar_network import repairs
 except ImportError:
     raise unittest.SkipTest("Home Assistant Core is unavailable")
@@ -43,6 +43,10 @@ class FakeCoordinator:
 
 
 class IntegrationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_card_resource_uses_release_cache_key(self):
+        self.assertEqual("/interstellar_network/interstellar-network-card.js", CARD_PATH)
+        self.assertEqual(f"{CARD_PATH}?v=0.4.1", CARD_URL)
+
     async def test_migration_keeps_unique_id(self):
         self.assertEqual("machine-a",machine_id(stats()))
         entry=SimpleNamespace(version=1,unique_id="old-host",data={"url":"https://atlas.ts.net"})
