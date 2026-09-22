@@ -15,6 +15,7 @@ zip -qr "dist/interstellar-network-v${VERSION}.zip" \
   server_helper \
   README.md \
   CHANGELOG.md \
-  LICENSE
+  LICENSE \
+  -x '*/__pycache__/*' '*.pyc'
 
 echo "Created dist/interstellar-network-v${VERSION}.zip"

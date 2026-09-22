@@ -4,6 +4,7 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass, Bina
 from homeassistant.helpers.entity import EntityCategory
 from . import InterstellarConfigEntry
 from .entity import InterstellarEntity, machine_id
+from .wol import effective_wol
 
 class BoolSensor(InterstellarEntity,BinarySensorEntity):
     def __init__(self,c,key,name,value_fn,device_class=None,category=EntityCategory.DIAGNOSTIC,attributes_fn=None):
@@ -15,6 +16,29 @@ class BoolSensor(InterstellarEntity,BinarySensorEntity):
         attrs=self.interstellar_attributes()
         if self._attrs_fn: attrs.update(self._attrs_fn(self.coordinator.data) or {})
         return attrs
+
+
+class WolEnabledSensor(InterstellarEntity, BinarySensorEntity):
+    interstellar_key = "wake_on_lan_enabled"
+    _attr_name = "Wake-on-LAN enabled"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator)
+        self.entry = entry
+        self._attr_unique_id = f"{machine_id(coordinator.data)}_wake_on_lan_enabled"
+
+    @property
+    def available(self):
+        return True
+
+    @property
+    def is_on(self):
+        return effective_wol(self.entry.options, self.coordinator.data)["configured"]
+
+    @property
+    def extra_state_attributes(self):
+        return {**self.interstellar_attributes(), **effective_wol(self.entry.options, self.coordinator.data)}
 
 def static_entities(c):
     return [
@@ -29,14 +53,14 @@ def dynamic_entities(c):
     expected=set(c.data.get("service_policy",{}).get("expected_services",[]))
     for service in c.data.get("services",{}):
         safe=service.replace(".","_").replace("@","_")
-        out.append(BoolSensor(c,f"service_{safe}",f"Service {service}",lambda d,s=service:d.get("services",{}).get(s)=="active",BinarySensorDeviceClass.RUNNING,EntityCategory.DIAGNOSTIC,lambda d,s=service:{"raw_state":d.get("services",{}).get(s),"expected":s in d.get("service_policy",{}).get("expected_services",[])}))
+        out.append(BoolSensor(c,f"service_{safe}",f"Service {service}",lambda d,s=service:d.get("services",{}).get(s)=="active",BinarySensorDeviceClass.RUNNING,EntityCategory.DIAGNOSTIC,lambda d,s=service:{"raw_state":d.get("services",{}).get(s),"expected":s in d.get("service_policy",{}).get("expected_services",[]),"manageable":s in d.get("service_policy",{}).get("manageable_services",[]),"last_action":next((a for a in d.get("_control",{}).get("actions",[]) if a.get("target")==s and a.get("action","").startswith("service_")),None)}))
         if service in expected:
             out.append(BoolSensor(c,f"expected_service_{safe}_problem",f"Expected service {service} problem",lambda d,s=service:d.get("services",{}).get(s)!="active",BinarySensorDeviceClass.PROBLEM,None,lambda d,s=service:{"raw_state":d.get("services",{}).get(s)}))
     return out
 
 async def async_setup_entry(hass,entry:InterstellarConfigEntry,async_add_entities):
     c=entry.runtime_data.coordinator
-    entities=static_entities(c); async_add_entities(entities)
+    entities=static_entities(c) + [WolEnabledSensor(c, entry)]; async_add_entities(entities)
     added=set(e.unique_id for e in entities)
     def add_dynamic():
         new=[]

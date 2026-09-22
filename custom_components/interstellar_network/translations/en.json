@@ -23,7 +23,8 @@
       "already_configured": "This server is already configured",
       "cannot_connect": "The discovered server could not be reached",
       "missing_url": "Discovery did not include an API URL",
-      "missing_unique_id": "Discovery did not include a machine ID"
+      "missing_unique_id": "Discovery did not include a machine ID",
+      "legacy_entry_exists": "This server is already configured under the legacy Interstellar Server integration. Remove the old entry through Devices & services before adding it here; review entity IDs and automations during migration."
     }
   },
   "entity": {
@@ -119,6 +120,37 @@
     "expected_service_down": {
       "title": "Expected service down on {server}",
       "description": "Expected service {service} on {server} is {state}. Restore the service or remove it from the expected-service policy."
+    },
+    "docker_down": {
+      "title": "Docker is down on {server}",
+      "description": "Docker is expected on {server}, but the daemon is unavailable."
+    },
+    "expected_container_stopped": {
+      "title": "Expected container stopped on {server}",
+      "description": "{container} should be running on {server}."
+    },
+    "container_unhealthy": {
+      "title": "Unhealthy container on {server}",
+      "description": "{container} reports unhealthy on {server}."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Server management",
+        "data": {
+          "control_url": "Tailscale Serve control URL (optional)",
+          "wake_on_lan_enabled": "Enable Wake-on-LAN from Home Assistant",
+          "wake_on_lan_mac": "Wake-on-LAN MAC address",
+          "wake_on_lan_broadcast": "IPv4 broadcast address (required for Wake)"
+        }
+      }
+    },
+    "error": {
+      "https_required": "Use an HTTPS Tailscale Serve URL",
+      "invalid_mac": "Enter a valid unicast MAC address",
+      "invalid_broadcast": "Enter a valid IPv4 broadcast address",
+      "missing_broadcast": "Enter the broadcast address for the target network"
     }
   }
 }

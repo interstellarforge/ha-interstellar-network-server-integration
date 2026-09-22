@@ -9,6 +9,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.util import dt as dt_util
 from . import InterstellarConfigEntry
 from .entity import InterstellarEntity, machine_id
+from .wol import effective_wol
 
 ValueFn=Callable[[dict[str,Any]],Any]
 def get(data,*path):
@@ -94,9 +95,54 @@ def dynamic_entities(c):
             entities.append(DynamicSensor(c,f"disk_{safe}_{suffix}",f"{name} {label}",lambda d,n=name,f=field:next((x.get(f) for x in d.get("disk_io",[]) if x.get("device")==n),None),unit,state,SensorDeviceClass.DATA_SIZE if field.endswith("bytes") else None))
     return entities
 
+
+class ServerSnapshotSensor(InterstellarEntity, SensorEntity):
+    """Card data, grouped per machine without hundreds of UI entities."""
+    interstellar_key = "server_snapshot"
+    _attr_name = "Server snapshot"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{machine_id(coordinator.data)}_server_snapshot"
+
+    @property
+    def available(self):
+        return True
+
+    @property
+    def native_value(self):
+        return "online" if self.coordinator.last_update_success else "offline"
+
+    @property
+    def extra_state_attributes(self):
+        d = self.coordinator.data
+        control = d.get("_control", {})
+        entry = self.coordinator.config_entry
+        wake = effective_wol(entry.options if entry else {}, d)
+        return {**self.interstellar_attributes(),
+                "snapshot": {
+                    "host": d.get("host", {}), "timestamp_utc": d.get("timestamp_utc"), "agent_version": d.get("agent_version"),
+                    "cpu": d.get("cpu", {}), "memory": d.get("memory", {}),
+                    "disk_root": d.get("disk_root", {}), "filesystems": d.get("filesystems", [])[:20],
+                    "disk_io": d.get("disk_io", [])[:20], "network": d.get("network", {}),
+                    "temperatures": d.get("temperatures", []), "services": d.get("services", {}),
+                    "service_policy": d.get("service_policy", {}), "updates": d.get("updates", {}),
+                    "system": d.get("system", {}), "time": d.get("time", {}),
+                    "wake_on_lan": wake, "wake_sent_at": self.coordinator.last_wake_sent_at,
+                    "control": {"available": bool(self.coordinator.last_update_success and
+                                                  control.get("control_available", control.get("available", bool(control)))),
+                                "unavailable_reason": control.get("control_unavailable_reason") or d.get("control_plane", {}).get("control_unavailable_reason"),
+                                "version": control.get("version"), "toolbox_version": control.get("toolbox_version"),
+                                "last_reboot_action": control.get("last_reboot_action"),
+                                "last_reboot_duration_seconds": control.get("last_reboot_duration_seconds"),
+                                "policy": control.get("policy", {}), "docker": control.get("docker", {}),
+                                "actions": control.get("actions", [])[:10]},
+                }}
+
 async def async_setup_entry(hass,entry:InterstellarConfigEntry,async_add_entities):
     c=entry.runtime_data.coordinator
-    entities=[StandardSensor(c,d) for d in D]
+    entities=[StandardSensor(c,d) for d in D] + [ServerSnapshotSensor(c)]
     async_add_entities(entities)
     added=set(e.unique_id for e in entities)
     def add_dynamic():

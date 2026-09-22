@@ -1,0 +1,50 @@
+manage:
+  name: Manage server
+  description: Submit a policy-controlled server action and return its action ID.
+  fields:
+    server:
+      name: Server machine ID
+      required: true
+      selector:
+        text:
+    action:
+      name: Action
+      required: true
+      selector:
+        select:
+          options:
+            - refresh_stats
+            - reboot
+            - shutdown
+            - refresh_packages
+            - install_security_updates
+            - install_all_updates
+            - start_service
+            - stop_service
+            - restart_service
+            - start_container
+            - stop_container
+            - restart_container
+            - restart_docker
+            - restart_health_agent
+            - restart_control_agent
+            - restart_mdns
+            - restart_tailscaled
+    target:
+      name: Service or container
+      selector:
+        text:
+    confirmation:
+      name: Hostname confirmation
+      description: Required for reboot and shutdown.
+      selector:
+        text:
+wake:
+  name: Wake server
+  description: Send a Wake-on-LAN magic packet from Home Assistant. Packet delivery does not prove the server has powered on. Requires an administrator.
+  fields:
+    server:
+      name: Server machine ID
+      required: true
+      selector:
+        text:

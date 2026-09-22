@@ -13,8 +13,8 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/interstellarforge/ha-interstellar-network-server-integration/issues",
-  "requirements": [],
-  "version": "0.3.1",
+  "requirements": ["wakeonlan==3.3.0"],
+  "version": "0.4.0",
   "zeroconf": [
     "_interstellar._tcp.local."
   ]

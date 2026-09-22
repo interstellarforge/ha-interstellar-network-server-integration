@@ -40,3 +40,24 @@ class InterstellarApiClient:
 
     async def async_get_health(self) -> dict[str, Any]:
         return await self._get_json("/health")
+
+    async def async_get_control(self) -> dict[str, Any]:
+        state = await self._get_json("/state")
+        actions = await self._get_json("/actions")
+        if "policy" not in state or not isinstance(actions.get("actions"), list):
+            raise InterstellarInvalidResponse("Unexpected control response")
+        state["actions"] = actions["actions"]
+        return state
+
+    async def async_action(self, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            async with self._session.post(f"{self.base_url}{path}", json=body or {}, timeout=self._timeout) as response:
+                payload = await response.json(content_type=None)
+                if response.status != 202 or not isinstance(payload, dict) or not isinstance(payload.get("action_id"), str):
+                    reason = payload.get("error", "Action rejected") if isinstance(payload, dict) else "Invalid action response"
+                    raise InterstellarApiError(str(reason))
+                return payload
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise InterstellarCannotConnect(str(err)) from err
+        except ValueError as err:
+            raise InterstellarInvalidResponse("Invalid JSON action response") from err

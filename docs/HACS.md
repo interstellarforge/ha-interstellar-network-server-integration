@@ -4,7 +4,7 @@
 
 1. Set the GitHub repository description and topics.
 2. Commit and push the integration.
-3. Create a GitHub release for `v0.3.0` after validation passes.
+3. Create a GitHub release for `v0.4.0` after validation passes.
 
 ## Add as a custom HACS repository
 
