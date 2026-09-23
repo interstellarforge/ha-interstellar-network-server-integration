@@ -1,4 +1,4 @@
-const INTERSTELLAR_CARD_VERSION = "0.5.0";
+const INTERSTELLAR_CARD_VERSION = "0.5.1";
 
 const ESC = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const NUM = (v) => v === null || v === undefined || v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null;
@@ -23,7 +23,6 @@ class InterstellarNetworkCard extends HTMLElement {
     this.shadowRoot.addEventListener("click",e=>this._click(e));
     this.shadowRoot.addEventListener("change",e=>this._change(e));
     this.shadowRoot.addEventListener("input",e=>this._input(e));
-    this.shadowRoot.addEventListener("toggle",e=>this._toggle(e),true);
     this.shadowRoot.addEventListener("keydown",e=>{if(e.key==="Escape"&&this._confirmation){e.stopPropagation();this._confirmation=null;this.render();}});
   }
   setConfig(config){
@@ -179,10 +178,12 @@ class InterstellarNetworkCard extends HTMLElement {
     this.shadowRoot.innerHTML=`<ha-card><div class="wrap"><header class="card-head"><div><h2>${ESC(this.config.title)}</h2><div class="muted">${servers.length} servers · ${totals.healthy} healthy · ${totals.problem} warning · ${totals.offline} offline</div></div><div class="mode-switch" role="group" aria-label="Card layout">${["compact","detailed","fleet"].map(m=>`<button data-mode="${m}" aria-pressed="${this._mode===m}">${m}</button>`).join("")}</div></header>${this._notice?`<div class="notice" role="status">${ESC(this._notice)}</div>`:""}${missing.map(s=>`<div class="config-warning" role="alert">Configured server not found: ${ESC(s)}</div>`).join("")}<div class="fleet-summary"><div><strong>${totals.updates}</strong><span>Updates</span></div><div><strong>${totals.security}</strong><span>Security</span></div></div><div class="filters"><div role="group" aria-label="Status filter">${["all","healthy","problem","offline"].map(f=>`<button data-filter="${f}" aria-pressed="${this._filter===f}">${f}</button>`).join("")}</div>${roles.length>1?`<label>Role <select id="role"><option value="all">All roles</option>${roles.map(r=>`<option value="${ESC(r)}" ${this._role===r?"selected":""}>${ESC(r)}</option>`).join("")}</select></label>`:""}</div>${visible.length?content:'<p class="muted empty">No matching servers.</p>'}</div></ha-card>${this._confirmMarkup(servers)}<style>${this._css()}</style>`;
     const dialog=this.shadowRoot.querySelector(".confirm-dialog"); if(dialog){if(typeof dialog.showModal==="function")dialog.showModal();else dialog.setAttribute("open","");}
   }
-  _toggle(e){const el=e.target;if(!el.matches?.("details.section"))return;const id=el.dataset.serverId,key=el.dataset.section;let set=this._expandedSections.get(id);if(!set){set=new Set(SECTION_KEYS.filter(k=>this._expanded(id,k)));this._expandedSections.set(id,set);}if(el.open)set.add(key);else set.delete(key);}
+  _setExpanded(id,key,open){let set=this._expandedSections.get(id);if(!set){set=new Set(SECTION_KEYS.filter(k=>this._expanded(id,k)));this._expandedSections.set(id,set);}if(open)set.add(key);else set.delete(key);}
   _change(e){if(e.target.id!=="role")return;e.stopPropagation();this._role=e.target.value;this.render();}
   _input(e){if(e.target.id==="confirm-input"&&this._confirmation)this._confirmation.input=e.target.value;}
   async _click(e){
+    const summary=e.target.closest("summary"); const section=summary?.closest("details.section");
+    if(section){e.preventDefault();e.stopPropagation();const id=section.dataset.serverId,key=section.dataset.section,open=!section.open;section.open=open;this._setExpanded(id,key,open);this.render();return;}
     const el=e.target.closest("button,[data-action]"); if(!el)return; e.stopPropagation();
     if(el.dataset.mode){this._mode=el.dataset.mode;this.render();return;} if(el.dataset.filter){this._filter=el.dataset.filter;this.render();return;}
     if(el.dataset.selectServer){this._selectedServer=el.dataset.selectServer;if(this._mode==="compact")this._mode="detailed";this.render();return;}

@@ -7,7 +7,7 @@ const script = fs.readFileSync(path.join(__dirname, '../custom_components/inters
 const dom = new JSDOM('<html><body></body></html>', {runScripts: 'dangerously', url: 'http://localhost'});
 dom.window.eval(script);
 
-assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.0');
+assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.1');
 assert(dom.window.customElements.get('interstellar-network-card'));
 assert(dom.window.customElements.get('interstellar-overview-card'));
 
@@ -153,28 +153,34 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   }
 
   // Expansion state survives HA/coordinator updates independently per section.
-  const systemDetails = result.card.shadowRoot.querySelector('[data-section="system"]');
-  const servicesDetails = result.card.shadowRoot.querySelector('[data-section="services"]');
-  servicesDetails.open = true;
-  servicesDetails.dispatchEvent(new dom.window.Event('toggle'));
-  systemDetails.open = false;
-  systemDetails.dispatchEvent(new dom.window.Event('toggle'));
+  // Toggling must happen synchronously on the summary click (not the async native
+  // `toggle` event) so a hass update landing between click and toggle can't collapse
+  // a section the user just opened.
+  // Each click fully re-renders the shadow DOM, so elements must be re-queried afterwards
+  // rather than reused across clicks (a stale, now-detached reference never sees clicks).
+  result.card.shadowRoot.querySelector('[data-section="services"]').querySelector('summary').click();
+  result.card.shadowRoot.querySelector('[data-section="system"]').querySelector('summary').click();
+  assert.equal(result.card.shadowRoot.querySelector('[data-section="system"]').open, false);
   const updatedAtlas = snapshot('machine-a', 'Atlas');
   updatedAtlas.attributes.snapshot.cpu.used_percent = 43;
   result.card.hass = {states: {'sensor.atlas_snapshot': updatedAtlas}, callService: async (...args) => result.calls.push(args)};
   assert.equal(result.card.shadowRoot.querySelector('[data-section="system"]').open, false);
   assert.equal(result.card.shadowRoot.querySelector('[data-section="services"]').open, true);
-  const reopenedSystem = result.card.shadowRoot.querySelector('[data-section="system"]');
-  reopenedSystem.open = true;
-  reopenedSystem.dispatchEvent(new dom.window.Event('toggle'));
+  result.card.shadowRoot.querySelector('[data-section="system"]').querySelector('summary').click();
   result.card.hass = {states: {'sensor.atlas_snapshot': updatedAtlas}, callService: async (...args) => result.calls.push(args)};
   assert.equal(result.card.shadowRoot.querySelector('[data-section="system"]').open, true);
   assert.equal(result.card.shadowRoot.querySelector('[data-section="services"]').open, true);
 
+  // A hass update firing in the same tick as a section-open click must not win the race
+  // and collapse the section (the original bug: state was only recorded on the async
+  // native `toggle` event, so a render() in between could rebuild a closed <details>).
+  const manageBeforeOpen = result.card.shadowRoot.querySelector('[data-section="manage"]');
+  manageBeforeOpen.querySelector('summary').click();
+  result.card.hass = {states: {'sensor.atlas_snapshot': updatedAtlas}, callService: async (...args) => result.calls.push(args)};
+  assert.equal(result.card.shadowRoot.querySelector('[data-section="manage"]').open, true, 'section must stay open across an immediate hass update');
+
   // Manage expansion and button clicks survive a render and don't toggle the parent.
   let manage = result.card.shadowRoot.querySelector('[data-section="manage"]');
-  manage.open = true;
-  manage.dispatchEvent(new dom.window.Event('toggle'));
   manage.querySelector('[data-action="refresh_stats"]').click();
   await tick();
   manage = result.card.shadowRoot.querySelector('[data-section="manage"]');

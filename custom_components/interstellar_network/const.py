@@ -16,5 +16,5 @@ ZEROCONF_TYPE = "_interstellar._tcp.local."
 DISK_WARNING_PERCENT = 90.0
 INODE_WARNING_PERCENT = 90.0
 CARD_PATH = "/interstellar_network/interstellar-network-card.js"
-CARD_VERSION = "0.5.0"
+CARD_VERSION = "0.5.1"
 CARD_URL = f"{CARD_PATH}?v={CARD_VERSION}"

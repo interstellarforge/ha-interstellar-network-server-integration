@@ -8,7 +8,7 @@ The integration monitors Debian and Ubuntu servers and, when explicitly configur
 - Interstellar Toolbox 4.5.0 / health agent 3.2.0 for WoL telemetry
 - Optional Interstellar control service 0.2.0 and Tailscale **1.98.9+** Serve with an app capability Grant for management
 
-Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.0.
+Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.1.
 
 ## Install
 
@@ -60,7 +60,7 @@ Do not treat shutdown as routine until a real powered-off WoL test succeeds. See
 
 ## Dashboard card
 
-Add `/interstellar_network/interstellar-network-card.js?v=0.5.0` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
+Add `/interstellar_network/interstellar-network-card.js?v=0.5.1` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
 
 ```yaml
 type: custom:interstellar-network-card
@@ -118,7 +118,7 @@ The card groups by canonical machine ID and retains offline/last-known snapshots
 
 `custom:interstellar-overview-card` remains a backward-compatible alias. Existing boolean `default_expanded` and existing `show`, `roles`, and `servers` YAML remain accepted.
 
-When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.0` in the browser console, which confirms the loaded bundle.
+When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.1` in the browser console, which confirms the loaded bundle.
 
 OS package counts use the existing `pending_updates` and `pending_security_updates` sensors; last update time and reboot required use the existing timestamp sensor and binary sensor. The former system-packages `update` entity was removed because a package count has no installed/latest version pair. Its stale registry entry is removed during setup. Use the card or admin-only `interstellar_network.manage` for update actions. No component `update` entities are created until a secure source of real installed/latest versions exists. Power actions have no one-click button entities. The WoL binary sensor keeps its configuration attributes available while the target is offline.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Fix expandable sections (System, Manage, Services, Docker, Network, Disks, …) occasionally collapsing right after being opened: expansion state was only recorded on the asynchronous native `toggle` event, so a Home Assistant state update landing between the click and that event could re-render the section closed. Section open/close is now handled synchronously in the click handler itself, so no race with `hass` updates is possible.
+
 ## 0.5.0
 
 - Add responsive `compact`, `detailed`, and hybrid `fleet` card layouts with all-server discovery and predictable machine-ID/case-insensitive hostname filtering.
