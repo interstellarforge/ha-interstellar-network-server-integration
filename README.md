@@ -5,8 +5,8 @@ The integration monitors Debian and Ubuntu servers and, when explicitly configur
 ## Requirements
 
 - Home Assistant 2026.8.0 or newer
-- Interstellar Toolbox 4.5.0 / health agent 3.2.0 for WoL telemetry
-- Optional Interstellar control service 0.2.0 and Tailscale **1.98.9+** Serve with an app capability Grant for management
+- Interstellar Toolbox 4.6.0 / health agent 3.2.1 for WoL telemetry and accurate control-plane status
+- Optional Interstellar control service 0.2.1 and Tailscale **1.98.9+** Serve with an app capability Grant for management
 
 Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.2.
 
@@ -20,7 +20,10 @@ The health API stays read-only and remains available at `/`, `/health`, `/stats`
 
 1. Confirm `tailscale version --daemon` reports 1.98.9 or newer for both Client and Daemon. Then on the server, run `interstellar` → **Interstellar API / Agent** → **Install / repair / upgrade Control API**. Choose manageable services and containers. Expected and manageable are separate lists. The toolbox writes root-owned `/etc/interstellar/control-policy.json`.
 2. Give the Home Assistant Tailscale identity the `interstellarnetwork.nl/cap/server-control` app capability for the server, and allow it to connect to the control Serve port in your tailnet policy. Grant only the HA node or a narrow user group.
-   For example, with HA tagged `tag:home-assistant` and servers tagged `tag:interstellar-server`, a narrow tailnet Grant is:
+
+   The Toolbox can do this for you: `interstellar` → **Interstellar API / Agent** → **Configure tailnet Grant (Tailscale API)**. It shows the exact diff, validates it with Tailscale, and asks you to confirm before writing; your existing rules and comments are preserved. It needs a credential with the `policy_file` scope.
+
+   To do it by hand instead, with HA tagged `tag:home-assistant` and servers tagged `tag:interstellar-server`, a narrow tailnet Grant is:
 
    ```json
    {
@@ -33,7 +36,7 @@ The health API stays read-only and remains available at `/`, `/health`, `/stats`
    }
    ```
 
-3. Confirm the control Serve listener exists. Toolbox 4.5.1 configures it during control install/repair; on older installations it may be missing even though both control services are running:
+3. Confirm the control Serve listener exists. Toolbox 4.6.0 configures it during control install/repair; on older installations it may be missing even though both control services are running:
 
    ```bash
    tailscale serve status
