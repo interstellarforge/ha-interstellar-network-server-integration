@@ -143,6 +143,10 @@
           "wake_on_lan_enabled": "Enable Wake-on-LAN from Home Assistant",
           "wake_on_lan_mac": "Wake-on-LAN MAC address",
           "wake_on_lan_broadcast": "IPv4 broadcast address (required for Wake)"
+        },
+        "data_description": {
+          "control_url": "Canonical URL is https://<magicdns-name>:8443. Leave empty for monitoring only.",
+          "wake_on_lan_broadcast": "IPv4 broadcast address of the server's LAN, for example 192.168.1.255."
         }
       }
     },

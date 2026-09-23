@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.2
+
+- Report why control is unavailable instead of collapsing every failure into one message. `HTTP 403 {"error":"Tailscale control capability required"}` was shown as "Control API is not active" even though the control services were running, which sent debugging in the wrong direction. Authorization failures, connection refusals, DNS and TLS failures, timeouts, 401/403/404/5xx, and invalid responses now each carry their own `error_code` and human-readable reason.
+- Stop borrowing the health agent's local control-service status for failures that reached the control API. Only a connection that never arrived falls back to what the node reports about itself.
+- Show honest control state in the card. A missing tailnet grant reads "Control API reachable · Tailscale control capability missing" with the required capability named, rather than a blank field or a stopped-service message. Control-sourced System values (Toolbox, Control, last reboot) say "Authorization required" instead of an ambiguous dash, and no management controls are offered.
+- Distinguish a server with no control URL configured from one that is configured but unreachable.
+- Prefill the canonical `https://<magicdns-name>:8443` control URL in the options flow for a Tailscale MagicDNS health URL, and never rewrite a control URL that is already configured. An existing path-based control URL keeps working when the options form is reopened.
+- Report the real reason when a management service call is refused.
+
 ## 0.5.1
 
 - Fix expandable sections (System, Manage, Services, Docker, Network, Disks, …) occasionally collapsing right after being opened: expansion state was only recorded on the asynchronous native `toggle` event, so a Home Assistant state update landing between the click and that event could re-render the section closed. Section open/close is now handled synchronously in the click handler itself, so no race with `hass` updates is possible.

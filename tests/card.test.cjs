@@ -7,7 +7,7 @@ const script = fs.readFileSync(path.join(__dirname, '../custom_components/inters
 const dom = new JSDOM('<html><body></body></html>', {runScripts: 'dangerously', url: 'http://localhost'});
 dom.window.eval(script);
 
-assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.1');
+assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.2');
 assert(dom.window.customElements.get('interstellar-network-card'));
 assert(dom.window.customElements.get('interstellar-overview-card'));
 
@@ -68,7 +68,8 @@ const snapshot = (id, name, options = {}) => {
           },
           docker: options.docker || {installed: true, daemon_running: true, version: '28.0', running: 0, stopped: 0, containers: []},
           actions: [],
-          unavailable_reason: managed ? null : 'Control API unavailable',
+          error_code: managed ? null : (options.errorCode || 'connection_refused'),
+          unavailable_reason: managed ? null : (options.unavailableReason || 'The connection was refused'),
         },
       },
     },
@@ -226,10 +227,47 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
   // Read-only servers have no destructive controls and explain their state.
   result = makeCard({mode: 'detailed', default_expanded: {manage: true}}, {'sensor.atlas_snapshot': snapshot('machine-a', 'Atlas', {managed: false})});
-  assert(result.card.shadowRoot.textContent.includes('This server is currently read-only'));
+  assert(result.card.shadowRoot.textContent.includes('Read-only'));
+  assert(result.card.shadowRoot.textContent.includes('Connection refused'));
   assert.equal(result.card.shadowRoot.querySelectorAll('[data-action="reboot"]').length, 0);
   assert.equal(result.card.shadowRoot.querySelectorAll('[data-action="install_all_updates"]').length, 0);
   assert(result.card.shadowRoot.querySelector('[data-action="refresh_stats"]'));
+
+  // A missing tailnet grant is a reachable-but-unauthorized control API. It must
+  // never be shown as a stopped service, and must name the required capability.
+  const blocked = snapshot('machine-a', 'Atlas', {
+    managed: false,
+    errorCode: 'tailscale_capability_missing',
+    unavailableReason: 'Tailscale control capability is not granted to Home Assistant',
+  });
+  blocked.attributes.snapshot.control.toolbox_version = null;
+  blocked.attributes.snapshot.control.version = null;
+  result = makeCard({mode: 'detailed', default_expanded: {manage: true, system: true}},
+    {'sensor.atlas_snapshot': blocked});
+  const blockedText = result.card.shadowRoot.textContent;
+  assert(blockedText.includes('Read-only'));
+  assert(blockedText.includes('Control API reachable'));
+  assert(blockedText.includes('Tailscale control capability missing'));
+  assert(blockedText.includes('interstellarnetwork.nl/cap/server-control'));
+  assert(!blockedText.includes('Control API is not active'), 'must not blame the service');
+  // Control-sourced System values say why they are absent instead of showing a dash.
+  const blockedSystem = result.card.shadowRoot.querySelector('[data-section="system"]');
+  assert(blockedSystem.textContent.includes('Authorization required'));
+  assert(blockedSystem.textContent.includes('1.98.9'), 'health-sourced Tailscale version still shows');
+  // No management is faked.
+  for (const action of ['reboot', 'shutdown', 'install_all_updates', 'restart_control_agent']) {
+    assert.equal(result.card.shadowRoot.querySelectorAll(`[data-action="${action}"]`).length, 0,
+      `${action} must not be offered without authorization`);
+  }
+
+  // An unconfigured control URL reads differently from an authorization failure.
+  result = makeCard({mode: 'detailed', default_expanded: {manage: true}}, {
+    'sensor.atlas_snapshot': snapshot('machine-a', 'Atlas', {
+      managed: false, errorCode: 'not_configured',
+      unavailableReason: 'No control URL is configured for this server'}),
+  });
+  assert(result.card.shadowRoot.textContent.includes('No control URL configured'));
+  assert(!result.card.shadowRoot.textContent.includes('interstellarnetwork.nl/cap/server-control'));
 
   // Wake state is explicit and survives render updates.
   dom.window.setTimeout = () => 0;

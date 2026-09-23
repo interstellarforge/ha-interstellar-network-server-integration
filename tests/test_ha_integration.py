@@ -9,7 +9,10 @@ try:
     from homeassistant.config_entries import ConfigEntryNotReady
     from homeassistant.helpers.update_coordinator import UpdateFailed
     from custom_components.interstellar_network import async_migrate_entry, async_setup, async_setup_entry, InterstellarRuntimeData
-    from custom_components.interstellar_network.api import InterstellarCannotConnect
+    from custom_components.interstellar_network.api import (
+        InterstellarCannotConnect, InterstellarCapabilityMissing, InterstellarConnectionRefused,
+        InterstellarInvalidResponse, InterstellarNotFound, InterstellarServerError,
+        InterstellarServiceUnavailable, InterstellarTimeout)
     from custom_components.interstellar_network.config_flow import machine_id, legacy_entry_exists, InterstellarServerConfigFlow, InterstellarOptionsFlow
     from custom_components.interstellar_network import config_flow
     from custom_components.interstellar_network.coordinator import InterstellarCoordinator
@@ -45,7 +48,7 @@ class FakeCoordinator:
 class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_card_resource_uses_release_cache_key(self):
         self.assertEqual("/interstellar_network/interstellar-network-card.js", CARD_PATH)
-        self.assertEqual(f"{CARD_PATH}?v=0.5.0", CARD_URL)
+        self.assertEqual(f"{CARD_PATH}?v=0.5.2", CARD_URL)
 
     async def test_migration_keeps_unique_id(self):
         self.assertEqual("machine-a",machine_id(stats()))
@@ -104,11 +107,103 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(UpdateFailed):
             await coordinator._async_update_data()
 
+    async def test_control_403_is_reported_as_a_missing_capability(self):
+        """Atlas and Jupiter returned 403 while their control services ran fine.
+
+        Reporting that as "Control API is not active" sent debugging down the
+        wrong path, so an authorization failure must never borrow the health
+        agent's local service status.
+        """
+        payload=stats()
+        payload["control_plane"]={"installed":True,"api_service_active":True,
+                                  "helper_service_active":True,"serve_expected":True,
+                                  "control_service_unavailable_reason":None}
+        health=SimpleNamespace(async_get_stats=AsyncMock(return_value=payload))
+        control=SimpleNamespace(async_get_control=AsyncMock(
+            side_effect=InterstellarCapabilityMissing(403,"HTTP 403: Tailscale control capability required")))
+        coordinator=InterstellarCoordinator(MagicMock(),health,control)
+        data=await coordinator._async_update_data()
+        self.assertFalse(data["_control"]["available"])
+        self.assertEqual("tailscale_capability_missing",data["_control"]["control_error_code"])
+        self.assertEqual("Tailscale control capability is not granted to Home Assistant",
+                         data["_control"]["control_unavailable_reason"])
+        self.assertNotIn("not active",data["_control"]["control_unavailable_reason"])
+
+    async def test_control_failures_keep_distinct_reasons(self):
+        for error,code in ((InterstellarNotFound(404),"not_found"),
+                           (InterstellarServerError(500),"server_error"),
+                           (InterstellarServiceUnavailable(503),"service_unavailable"),
+                           (InterstellarTimeout("slow"),"timeout"),
+                           (InterstellarInvalidResponse("bad"),"invalid_response")):
+            health=SimpleNamespace(async_get_stats=AsyncMock(return_value=stats()))
+            control=SimpleNamespace(async_get_control=AsyncMock(side_effect=error))
+            coordinator=InterstellarCoordinator(MagicMock(),health,control)
+            data=await coordinator._async_update_data()
+            self.assertEqual(code,data["_control"]["control_error_code"])
+            self.assertEqual(error.reason,data["_control"]["control_unavailable_reason"])
+
+    async def test_refused_connection_prefers_the_node_local_reason(self):
+        """A refused connection never reached the API, so the node explains it best."""
+        payload=stats()
+        payload["control_plane"]={"installed":False,
+                                  "control_service_unavailable_reason":"Control plane is not installed"}
+        health=SimpleNamespace(async_get_stats=AsyncMock(return_value=payload))
+        control=SimpleNamespace(async_get_control=AsyncMock(side_effect=InterstellarConnectionRefused("refused")))
+        coordinator=InterstellarCoordinator(MagicMock(),health,control)
+        data=await coordinator._async_update_data()
+        self.assertEqual("connection_refused",data["_control"]["control_error_code"])
+        self.assertEqual("Control plane is not installed",data["_control"]["control_unavailable_reason"])
+
+    async def test_missing_control_url_is_its_own_state(self):
+        health=SimpleNamespace(async_get_stats=AsyncMock(return_value=stats()))
+        coordinator=InterstellarCoordinator(MagicMock(),health,None)
+        data=await coordinator._async_update_data()
+        self.assertEqual("not_configured",data["_control"]["control_error_code"])
+        self.assertFalse(data["_control"]["available"])
+
+    async def test_snapshot_surfaces_control_error_code(self):
+        payload=stats()
+        payload["_control"]={"available":False,"control_error_code":"tailscale_capability_missing",
+                             "control_unavailable_reason":"Tailscale control capability is not granted to Home Assistant"}
+        payload["control_plane"]={"installed":True,"api_service_active":True,
+                                  "helper_service_active":True,"serve_expected":True}
+        sensor=ServerSnapshotSensor(FakeCoordinator(payload))
+        control=sensor.extra_state_attributes["snapshot"]["control"]
+        self.assertFalse(control["available"])
+        self.assertEqual("tailscale_capability_missing",control["error_code"])
+        self.assertIn("capability is not granted",control["unavailable_reason"])
+        # Local service facts stay separate from remote authorization.
+        self.assertTrue(control["service"]["api_service_active"])
+        self.assertTrue(control["service"]["serve_expected"])
+
+    async def test_control_url_is_derived_from_a_magicdns_health_url(self):
+        self.assertEqual("https://atlas.tail24b95.ts.net:8443",
+                         config_flow.suggested_control_url("https://atlas.tail24b95.ts.net"))
+        self.assertEqual("https://jupiter-1.tail24b95.ts.net:8443",
+                         config_flow.suggested_control_url("https://jupiter-1.tail24b95.ts.net/"))
+        # Anything that is not a plain MagicDNS HTTPS host is left to the operator.
+        for url in ("http://atlas.tail24b95.ts.net", "https://192.168.1.10",
+                    "https://atlas.example.com", "https://atlas.tail24b95.ts.net:9127",
+                    "https://atlas.tail24b95.ts.net/control", ""):
+            self.assertEqual("",config_flow.suggested_control_url(url),url)
+
+    async def test_existing_control_url_with_a_path_is_retained(self):
+        """A hand-configured /control URL must not break by reopening the form."""
+        options=InterstellarOptionsFlow()
+        entry=SimpleNamespace(options={"control_url":"https://atlas.tail24b95.ts.net/control"},
+                              data={"url":"https://atlas.tail24b95.ts.net"},runtime_data=None)
+        with patch.object(type(options),"config_entry",property(lambda self:entry)):
+            kept=await options.async_step_init({"control_url":"https://atlas.tail24b95.ts.net/control"})
+            self.assertEqual("https://atlas.tail24b95.ts.net/control",kept["data"]["control_url"])
+            # Changing it to another path-based URL is still rejected.
+            rejected=await options.async_step_init({"control_url":"https://atlas.tail24b95.ts.net/other"})
+            self.assertEqual("https_required",rejected["errors"]["control_url"])
+
     async def test_control_metadata_is_preserved_for_card_and_offline_state(self):
         data=stats();data.update({"services":{"ssh":"active"},"filesystems":[{"mountpoint":"/srv"}],
             "disk_io":[{"device":"sda"}],"temperatures":[{"name":"CPU","celsius":42}],"time":{"synchronized":True}})
-        control_state={"control_available":True,"version":"0.2.0","toolbox_version":"4.5.0",
-            "tailscale_version":"1.98.9","tailscale_daemon_version":"1.98.9-t123456",
+        control_state={"control_available":True,"version":"0.2.1","toolbox_version":"4.5.1",
+            "tailscale_version":"1.102.4","tailscale_daemon_version":"1.102.4-t3caf7d9e7-g084ee3b64",
             "boot_time_utc":"2026-09-21T14:27:23+00:00",
             "last_reboot_action":{"status":"successful","timestamp":"2026-09-21T14:27:00+00:00"},
             "last_reboot_duration_seconds":75,"policy":{"manageable_services":["docker"]},
@@ -116,15 +211,21 @@ class IntegrationTests(unittest.IsolatedAsyncioTestCase):
         health=SimpleNamespace(async_get_stats=AsyncMock(return_value=data))
         control=SimpleNamespace(async_get_control=AsyncMock(return_value=control_state))
         coordinator=InterstellarCoordinator(MagicMock(),health,control)
-        await coordinator._async_update_data()
-        self.assertEqual("1.98.9",coordinator.last_known["_control"]["tailscale_version"])
+        # _async_update_data returns the payload; DataUpdateCoordinator normally
+        # assigns it, so mirror that before reading entity attributes.
+        coordinator.data=await coordinator._async_update_data()
+        self.assertEqual("1.102.4",coordinator.last_known["_control"]["tailscale_version"])
         self.assertEqual([{"mountpoint":"/srv"}],coordinator.last_known["filesystems"])
         self.assertEqual({"ssh":"active"},coordinator.last_known["services"])
         snapshot=ServerSnapshotSensor(coordinator).extra_state_attributes["snapshot"]
-        self.assertEqual("4.5.0",snapshot["control"]["toolbox_version"])
-        self.assertEqual("0.2.0",snapshot["control"]["version"])
-        self.assertEqual("1.98.9",snapshot["control"]["tailscale_version"])
+        self.assertTrue(snapshot["control"]["available"])
+        self.assertIsNone(snapshot["control"]["error_code"])
+        self.assertEqual("4.5.1",snapshot["control"]["toolbox_version"])
+        self.assertEqual("0.2.1",snapshot["control"]["version"])
+        self.assertEqual("1.102.4",snapshot["control"]["tailscale_version"])
         self.assertEqual(75,snapshot["control"]["last_reboot_duration_seconds"])
+        self.assertEqual("successful",snapshot["control"]["last_reboot_action"]["status"])
+        self.assertEqual("2026-09-21T14:27:23+00:00",snapshot["control"]["boot_time_utc"])
 
     async def test_wol_last_known_saved_before_health_outage(self):
         data=stats();data["wake_on_lan"]={"supported":True,"enabled":True,

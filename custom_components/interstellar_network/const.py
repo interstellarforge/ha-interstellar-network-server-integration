@@ -15,6 +15,9 @@ MANUFACTURER = "Interstellar Network"
 ZEROCONF_TYPE = "_interstellar._tcp.local."
 DISK_WARNING_PERCENT = 90.0
 INODE_WARNING_PERCENT = 90.0
+# Canonical control topology: health on the MagicDNS host, control on :8443.
+CONTROL_SERVE_PORT = 8443
+CONTROL_CAPABILITY = "interstellarnetwork.nl/cap/server-control"
 CARD_PATH = "/interstellar_network/interstellar-network-card.js"
-CARD_VERSION = "0.5.1"
+CARD_VERSION = "0.5.2"
 CARD_URL = f"{CARD_PATH}?v={CARD_VERSION}"

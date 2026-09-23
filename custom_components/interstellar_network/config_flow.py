@@ -9,12 +9,29 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from .api import InterstellarApiClient, InterstellarCannotConnect, InterstellarInvalidResponse
 from .const import (CONF_URL, CONF_CONTROL_URL, CONF_VERIFY_SSL, CONF_WOL_ENABLED,
-                    CONF_WOL_MAC, CONF_WOL_BROADCAST, DOMAIN, REQUEST_TIMEOUT_SECONDS)
+                    CONF_WOL_MAC, CONF_WOL_BROADCAST, CONTROL_SERVE_PORT, DOMAIN,
+                    REQUEST_TIMEOUT_SECONDS)
 from .wol import normalize_mac, validate_broadcast
 
 
 def normalize_url(url: str) -> str:
     return url.strip().rstrip("/")
+
+
+def suggested_control_url(health_url: str) -> str:
+    """Canonical control topology is the health host on port 8443.
+
+    Only suggested for a Tailscale MagicDNS host served over HTTPS on the
+    default port. Anything else (a plain LAN address, a custom port, a reverse
+    proxy) is left to the operator, since the control listener is a separate
+    Serve handler that may not exist there.
+    """
+    parsed = urlsplit(normalize_url(health_url))
+    if parsed.scheme != "https" or not parsed.hostname or parsed.port or parsed.path:
+        return ""
+    if not parsed.hostname.endswith(".ts.net"):
+        return ""
+    return f"https://{parsed.hostname}:{CONTROL_SERVE_PORT}"
 
 def machine_id(data: dict[str, Any]) -> str:
     host = data.get("host", {})
@@ -106,7 +123,10 @@ class InterstellarOptionsFlow(config_entries.OptionsFlow):
         reported = (entry.runtime_data.coordinator.data or {}).get("wake_on_lan", {}) if entry and getattr(entry, "runtime_data", None) else {}
         if user_input is not None:
             value = normalize_url(user_input.get(CONF_CONTROL_URL, ""))
-            if value:
+            # A URL that is already stored keeps working. Only a changed value has
+            # to meet the canonical rules, so an existing path-based control URL is
+            # never silently broken by reopening this form.
+            if value and value != normalize_url(options.get(CONF_CONTROL_URL, "")):
                 parsed = urlsplit(value)
                 if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
                         or parsed.path or parsed.query or parsed.fragment):
@@ -134,8 +154,13 @@ class InterstellarOptionsFlow(config_entries.OptionsFlow):
                 return self.async_show_form(step_id="init", data_schema=self._schema(user_input), errors=errors)
             return self.async_create_entry(title="", data={CONF_CONTROL_URL: value,
                 CONF_WOL_ENABLED: enabled, CONF_WOL_MAC: mac, CONF_WOL_BROADCAST: broadcast})
+        # Prefill the canonical :8443 control URL for a MagicDNS health host, but
+        # never replace a control URL the operator already configured.
+        control_url = options.get(CONF_CONTROL_URL, "")
+        if not control_url and entry:
+            control_url = suggested_control_url(entry.data.get(CONF_URL, ""))
         return self.async_show_form(step_id="init", data_schema=self._schema({
-            CONF_CONTROL_URL: options.get(CONF_CONTROL_URL, ""),
+            CONF_CONTROL_URL: control_url,
             CONF_WOL_ENABLED: options.get(CONF_WOL_ENABLED, reported.get("enabled", False)),
             CONF_WOL_MAC: options.get(CONF_WOL_MAC) or reported.get("mac_address") or "",
             CONF_WOL_BROADCAST: options.get(CONF_WOL_BROADCAST) or reported.get("broadcast_address") or "",

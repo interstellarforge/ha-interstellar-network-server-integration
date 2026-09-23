@@ -133,6 +133,12 @@ class ServerSnapshotSensor(InterstellarEntity, SensorEntity):
                     "control": {"available": bool(self.coordinator.last_update_success and
                                                   control.get("control_available", control.get("available", bool(control)))),
                                 "unavailable_reason": control.get("control_unavailable_reason") or d.get("control_plane", {}).get("control_unavailable_reason"),
+                                # Stable code so the card can explain the cause rather
+                                # than guess from prose. See api.py for the values.
+                                "error_code": control.get("control_error_code"),
+                                "service": {key: d.get("control_plane", {}).get(key) for key in (
+                                    "installed", "api_service_active", "helper_service_active",
+                                    "serve_expected")},
                                 "version": control.get("version"), "toolbox_version": control.get("toolbox_version"),
                                 "tailscale_version": control.get("tailscale_version") or get(d, "network", "tailscale", "version"),
                                 "tailscale_daemon_version": control.get("tailscale_daemon_version") or get(d, "network", "tailscale", "daemon_version"),

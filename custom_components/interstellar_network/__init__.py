@@ -84,7 +84,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         control = runtime.coordinator.data.get("_control", {})
         if (not runtime.coordinator.last_update_success or control.get("available") is False
                 or control.get("control_available") is False):
-            raise HomeAssistantError("Server control is unavailable")
+            # Report why, so a missing tailnet grant is not mistaken for a stopped service.
+            reason = control.get("control_unavailable_reason") or "Server control is unavailable"
+            raise HomeAssistantError(reason)
         host = runtime.coordinator.data.get("host", {}).get("hostname", "")
         if action in POWER_ACTIONS and call.data.get("confirmation") != host:
             raise HomeAssistantError(f"Confirm the server hostname ({host}) before {action}")

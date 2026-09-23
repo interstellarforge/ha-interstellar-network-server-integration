@@ -8,7 +8,7 @@ The integration monitors Debian and Ubuntu servers and, when explicitly configur
 - Interstellar Toolbox 4.5.0 / health agent 3.2.0 for WoL telemetry
 - Optional Interstellar control service 0.2.0 and Tailscale **1.98.9+** Serve with an app capability Grant for management
 
-Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.1.
+Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.2.
 
 ## Install
 
@@ -33,16 +33,42 @@ The health API stays read-only and remains available at `/`, `/health`, `/stats`
    }
    ```
 
-3. On the server, configure a separate Tailscale Serve listener:
+3. Confirm the control Serve listener exists. Toolbox 4.5.1 configures it during control install/repair; on older installations it may be missing even though both control services are running:
+
+   ```bash
+   tailscale serve status
+   ```
+
+   ```text
+   https://atlas.example.ts.net
+   |-- / proxy http://127.0.0.1:9127
+
+   https://atlas.example.ts.net:8443
+   |-- / proxy unix:/run/interstellar-control-api/api.sock
+   ```
+
+   If the `:8443` route is missing, run `interstellar` → **Interstellar API / Agent** → **Install / repair / upgrade Control API**, or configure it manually:
 
    ```bash
    sudo tailscale serve --bg --https=8443 \
      --accept-app-caps=interstellarnetwork.nl/cap/server-control \
      unix:/run/interstellar-control-api/api.sock
-   tailscale serve status
    ```
 
-4. In the HA config entry **Options**, set the control URL to `https://atlas.example.ts.net:8443`. The integration always verifies TLS for control requests.
+4. In the HA config entry **Options**, set the control URL to `https://atlas.example.ts.net:8443`. That is the canonical control URL; health stays on the same host without a port. For a MagicDNS health URL the options form prefills it. The integration always verifies TLS for control requests.
+
+### When management stays unavailable
+
+The card names the actual cause instead of a generic message. The common ones:
+
+| Card shows | Meaning | Fix |
+| --- | --- | --- |
+| Control API reachable · Tailscale control capability missing | Serve and both services work; the tailnet Grant does not include `interstellarnetwork.nl/cap/server-control` for this HA node | Add the Grant in step 2 |
+| Connection refused / Server name could not be resolved | Nothing is listening on the control URL | Check the `:8443` Serve handler in step 3 |
+| Control route not found | The control URL points somewhere that is not the control API | Use `https://<magicdns-name>:8443` |
+| No control URL configured | Monitoring only | Set the control URL in step 4 |
+
+A `403` is never reported as a stopped service. On the server, `interstellar` → **Interstellar API / Agent** → **Control plane self-check** shows local services, Serve configuration, and tailnet authorization separately.
 
 Do not use Tailscale Funnel for the control listener. The control API is a private Unix HTTP socket; the root helper has a second Unix socket and checks the API process UID. Both server-side policy and the HA UI check targets. The helper is the authority.
 
@@ -60,7 +86,7 @@ Do not treat shutdown as routine until a real powered-off WoL test succeeds. See
 
 ## Dashboard card
 
-Add `/interstellar_network/interstellar-network-card.js?v=0.5.1` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
+Add `/interstellar_network/interstellar-network-card.js?v=0.5.2` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
 
 ```yaml
 type: custom:interstellar-network-card
@@ -118,7 +144,7 @@ The card groups by canonical machine ID and retains offline/last-known snapshots
 
 `custom:interstellar-overview-card` remains a backward-compatible alias. Existing boolean `default_expanded` and existing `show`, `roles`, and `servers` YAML remain accepted.
 
-When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.1` in the browser console, which confirms the loaded bundle.
+When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.2` in the browser console, which confirms the loaded bundle.
 
 OS package counts use the existing `pending_updates` and `pending_security_updates` sensors; last update time and reboot required use the existing timestamp sensor and binary sensor. The former system-packages `update` entity was removed because a package count has no installed/latest version pair. Its stale registry entry is removed during setup. Use the card or admin-only `interstellar_network.manage` for update actions. No component `update` entities are created until a secure source of real installed/latest versions exists. Power actions have no one-click button entities. The WoL binary sensor keeps its configuration attributes available while the target is offline.
 

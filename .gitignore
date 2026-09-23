@@ -9,3 +9,7 @@ __pycache__/
 .mypy_cache/
 dist/
 build/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
