@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.3
+
+- Explain every problem the card reports instead of only labelling it. Hovering the status pill lists each condition that made the server a problem, in full sentences: which expected service is down and in what state, which systemd units failed, how many pending updates are security fixes, how full the root filesystem is, how many processes the kernel OOM-killed since boot, which containers fail their own health check, and why a reboot is required.
+- Explain a failing service chip on hover. A red `SSH` chip now says that SSH is expected to run on this server, what systemd actually reports (`inactive`, `failed`, `not-found`, `masked`, …), and what that state means, so the chip is a starting point rather than a dead end. Container chips explain their Docker state the same way.
+- Derive the status pill, its hover text and the detailed badges from one problem list, so they can never disagree. The detailed view gained the two badges that could previously make a server a problem without ever being named: failed systemd units and unhealthy containers.
+- Explain the detailed badges on hover, `OOM` included: "the kernel killed 3 processes since boot because the server ran out of RAM". Security, disk and OOM badges are now red rather than sharing the amber of a pending reboot.
+- Explain the resource meters on hover, including what an inode is and why a filesystem can run out of them while still reporting free space.
+- Colour the compact card's update counts: green when nothing is pending, amber for ordinary pending updates, red when any of them is a security fix. The hover says how many of the pending updates are security fixes and where to install them.
+- Align compact cards to each other. A `<button>` vertically centres its own content, so cards in the same row drifted out of line whenever they held a different number of service chips. Cards are now laid out as columns: headers and resource tiles align at the top of a row, and the updates/uptime footer aligns at the bottom.
+
 ## 0.5.2
 
 - Report why control is unavailable instead of collapsing every failure into one message. `HTTP 403 {"error":"Tailscale control capability required"}` was shown as "Control API is not active" even though the control services were running, which sent debugging in the wrong direction. Authorization failures, connection refusals, DNS and TLS failures, timeouts, 401/403/404/5xx, and invalid responses now each carry their own `error_code` and human-readable reason.

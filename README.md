@@ -8,7 +8,7 @@ The integration monitors Debian and Ubuntu servers and, when explicitly configur
 - Interstellar Toolbox 4.6.0 / health agent 3.2.1 for WoL telemetry and accurate control-plane status
 - Optional Interstellar control service 0.2.1 and Tailscale **1.98.9+** Serve with an app capability Grant for management
 
-Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.2.
+Existing health-only entries continue to work, including when control is unavailable or Tailscale is too old for the control plane. This integration release is 0.5.3.
 
 ## Install
 
@@ -89,7 +89,7 @@ Do not treat shutdown as routine until a real powered-off WoL test succeeds. See
 
 ## Dashboard card
 
-Add `/interstellar_network/interstellar-network-card.js?v=0.5.2` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
+Add `/interstellar_network/interstellar-network-card.js?v=0.5.3` as a JavaScript module resource. Compact mode shows every server as a responsive fleet block:
 
 ```yaml
 type: custom:interstellar-network-card
@@ -143,11 +143,13 @@ servers:
 
 An unmatched value produces an in-card `Configured server not found` warning. The optional `fleet` mode combines the compact grid with the selected server's detail panel. `roles:` remains supported. Setting `full_width: true` (the default) requests `columns: "full"` from the Home Assistant Sections grid; `false` requests the normal 12-column default. The card does not set grid rows or a fixed content height, so dashboard-owned grid options and dynamic expansion continue to work.
 
+Nothing the card flags is left unexplained. The status pill (`Problem`, `Healthy`, `Offline`) lists on hover every condition that made the server a problem; the detailed view's badges, the resource meters and each service or container chip explain on hover what they mean and what the reported state is. The compact card's update counts are green when nothing is pending, amber for ordinary updates and red when any pending update is a security fix.
+
 The card groups by canonical machine ID and retains offline/last-known snapshots. Expansion state is independent per server and section and survives normal coordinator updates. Service and container controls appear only for targets in server policy. Managed server actions are routed only through `hass.callService`; the browser never calls a server URL. Package installation, reboot, and shutdown require confirmation, with hostname entry for power actions. Shutdown explicitly warns when WoL is unavailable. The HA `interstellar_network.manage` service enforces hostname confirmation for all callers and requires an authenticated administrator. Automations without user context are blocked for management and Wake. Control requests use the Home Assistant node's Tailscale identity; they do not carry the individual HA user's identity.
 
 `custom:interstellar-overview-card` remains a backward-compatible alias. Existing boolean `default_expanded` and existing `show`, `roles`, and `servers` YAML remain accepted.
 
-When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.2` in the browser console, which confirms the loaded bundle.
+When upgrading from 0.3.x or 0.4.x, replace the existing dashboard resource URL with the versioned URL above; do not add a duplicate resource. Restart Home Assistant after updating the integration, then fully reload the browser or companion app. A full reload is necessary if an older `custom:interstellar-network-card` custom element is already registered in that page. The query version gives the module a new browser cache key. The card logs `InterstellarNetwork card v0.5.3` in the browser console, which confirms the loaded bundle.
 
 OS package counts use the existing `pending_updates` and `pending_security_updates` sensors; last update time and reboot required use the existing timestamp sensor and binary sensor. The former system-packages `update` entity was removed because a package count has no installed/latest version pair. Its stale registry entry is removed during setup. Use the card or admin-only `interstellar_network.manage` for update actions. No component `update` entities are created until a secure source of real installed/latest versions exists. Power actions have no one-click button entities. The WoL binary sensor keeps its configuration attributes available while the target is offline.
 

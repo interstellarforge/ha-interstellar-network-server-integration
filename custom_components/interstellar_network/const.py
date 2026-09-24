@@ -19,5 +19,5 @@ INODE_WARNING_PERCENT = 90.0
 CONTROL_SERVE_PORT = 8443
 CONTROL_CAPABILITY = "interstellarnetwork.nl/cap/server-control"
 CARD_PATH = "/interstellar_network/interstellar-network-card.js"
-CARD_VERSION = "0.5.2"
+CARD_VERSION = "0.5.3"
 CARD_URL = f"{CARD_PATH}?v={CARD_VERSION}"

@@ -7,7 +7,7 @@ const script = fs.readFileSync(path.join(__dirname, '../custom_components/inters
 const dom = new JSDOM('<html><body></body></html>', {runScripts: 'dangerously', url: 'http://localhost'});
 dom.window.eval(script);
 
-assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.2');
+assert.equal(dom.window.interstellarNetworkCardVersion, '0.5.3');
 assert(dom.window.customElements.get('interstellar-network-card'));
 assert(dom.window.customElements.get('interstellar-overview-card'));
 
@@ -44,7 +44,7 @@ const snapshot = (id, name, options = {}) => {
         memory: {used_percent: 50, total_bytes: 1000, used_bytes: 500},
         disk_root: {used_percent: 30, inode_used_percent: 4, total_bytes: 1000, used_bytes: 300},
         filesystems: [{mountpoint: '/', used_percent: 30, inode_used_percent: 4, total_bytes: 1000, used_bytes: 300}],
-        updates: {pending: 2, pending_security: 1, packages: []},
+        updates: options.updates || {pending: 2, pending_security: options.securityUpdates ?? 1, packages: []},
         system: {reboot_required: false, failed_systemd_units: 0, failed_units: [], oom_kills_since_boot: 0},
         service_policy: {expected_services: ['ssh', 'docker'], problems: []},
         services: {ssh: 'active', docker: options.dockerState || 'active', plex: options.plexState || 'inactive'},
@@ -279,6 +279,65 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   result.card.hass = {states: {'sensor.jupiter_snapshot': snapshot('machine-j', 'Jupiter', {online: false, wake: true})}, callService: async (...args) => result.calls.push(args)};
   assert(result.card.shadowRoot.textContent.includes('Waking'));
 
+  // Every reported problem explains itself on hover, and the status pill carries
+  // the whole list, so "Problem" is never a dead end.
+  const sick = snapshot('machine-s', 'Sick');
+  Object.assign(sick.attributes.snapshot.system, {
+    oom_kills_since_boot: 3, reboot_required: true,
+    failed_systemd_units: 1, failed_units: [{unit: 'backup.service'}],
+  });
+  sick.attributes.snapshot.updates = {pending: 12, pending_security: 4, packages: []};
+  sick.attributes.snapshot.disk_root.used_percent = 94;
+  sick.attributes.snapshot.services.ssh = 'failed';
+  sick.attributes.snapshot.service_policy.problems = [{service: 'ssh', state: 'failed'}];
+  sick.attributes.snapshot.control.docker = {installed: true, daemon_running: true, version: '28.0', running: 1, stopped: 0,
+    containers: [{name: 'plex', state: 'running', health: 'unhealthy', project: 'media'}]};
+  result = makeCard({mode: 'detailed'}, {'sensor.sick_snapshot': sick});
+  const statusTitle = result.card.shadowRoot.querySelector('.detailed-server .status').getAttribute('title');
+  for (const fragment of ['7 problems', 'Service down', 'failed unit', '4 security', 'Disk warning', 'OOM', 'unhealthy', 'Reboot required']) {
+    assert(statusTitle.includes(fragment), `status hover missing: ${fragment}`);
+  }
+  assert(statusTitle.includes('kernel killed 3 processes'), 'OOM must be spelled out, not abbreviated');
+  const badges = [...result.card.shadowRoot.querySelectorAll('.badges span')];
+  assert.equal(badges.length, 7);
+  for (const badge of badges) {
+    assert(badge.getAttribute('title').length > badge.textContent.length, `badge ${badge.textContent} explains nothing`);
+  }
+  assert(badges.find(b => b.textContent === 'OOM').getAttribute('title').includes('ran out of RAM'));
+  assert(badges.find(b => b.textContent === 'Reboot required').getAttribute('title').includes('only takes effect after a reboot'));
+  // Resource meters explain the metric itself.
+  assert(result.card.shadowRoot.querySelector('.resources .bar-row:last-child .bar-head span').getAttribute('title').includes('inodes'));
+
+  // A healthy server says why it is healthy rather than showing an empty tooltip.
+  result = makeCard({mode: 'detailed'}, {'sensor.atlas_snapshot': snapshot('machine-a', 'Atlas', {securityUpdates: 0})});
+  assert(result.card.shadowRoot.querySelector('.detailed-server .status').getAttribute('title').includes('No problems reported'));
+
+  // A failing service chip names the exact state and what that state means.
+  result = makeCard({mode: 'compact'}, {'sensor.sick_snapshot': sick});
+  const sshChip = [...result.card.shadowRoot.querySelectorAll('.service-chip')].find(c => c.textContent.includes('SSH'));
+  assert(sshChip.classList.contains('problem'));
+  assert(sshChip.getAttribute('title').includes('failed'));
+  assert(sshChip.getAttribute('title').includes('expected to be running'));
+  assert(sshChip.getAttribute('title').includes('systemd stopped trying to restart it'));
+  const compactStatus = result.card.shadowRoot.querySelector('.compact-server .status');
+  assert(compactStatus.getAttribute('title').includes('Service down'));
+  // Offline servers explain the staleness instead of listing stale problems.
+  result = makeCard({mode: 'compact'}, {'sensor.jupiter_snapshot': snapshot('machine-j', 'Jupiter', {online: false})});
+  assert(result.card.shadowRoot.querySelector('.compact-server .status').getAttribute('title').includes('last reported data'));
+
+  // The updates footer is colour-coded: security beats plain pending beats clean.
+  const level = states => makeCard({mode: 'compact'}, states).card.shadowRoot.querySelector('.updates-line').className;
+  assert(level({'sensor.sick_snapshot': sick}).includes('critical'));
+  assert(level({'sensor.a': snapshot('machine-a', 'Atlas', {updates: {pending: 5, pending_security: 0, packages: []}})}).includes('warning'));
+  assert(level({'sensor.a': snapshot('machine-a', 'Atlas', {updates: {pending: 0, pending_security: 0, packages: []}})}).includes('ok'));
+  assert(level({'sensor.a': snapshot('machine-a', 'Atlas', {updates: {packages: []}})}).includes('unknown'));
+
+  // Compact cards lay out as columns so headers align at the top of a row and the
+  // updates footer aligns at the bottom, whatever each card holds in between.
+  assert(script.includes('.compact-server{display:flex;flex-direction:column'));
+  assert(script.includes('height:100%'));
+  assert(script.includes('.compact-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:auto'));
+
   // Content escaping and responsive/full-width CSS remain enforced.
   result = makeCard({mode: 'compact'}, {'sensor.bad': snapshot('machine-x', '<script>alert(1)</script>')});
   assert.equal(result.card.shadowRoot.querySelectorAll('script').length, 0);
@@ -287,5 +346,5 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   assert(script.includes('@media(max-width:700px)'));
   assert(script.includes('width:100%;max-width:none'));
 
-  console.log('card state, multi-server, data, management, compact/detailed, WoL, filtering, sizing and escaping: OK');
+  console.log('card state, multi-server, data, management, compact/detailed, explanations, WoL, filtering, sizing and escaping: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });

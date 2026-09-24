@@ -48,7 +48,7 @@ class FakeCoordinator:
 class IntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_card_resource_uses_release_cache_key(self):
         self.assertEqual("/interstellar_network/interstellar-network-card.js", CARD_PATH)
-        self.assertEqual(f"{CARD_PATH}?v=0.5.2", CARD_URL)
+        self.assertEqual(f"{CARD_PATH}?v=0.5.3", CARD_URL)
 
     async def test_migration_keeps_unique_id(self):
         self.assertEqual("machine-a",machine_id(stats()))
